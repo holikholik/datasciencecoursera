@@ -1,0 +1,87 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+## Loading and preprocessing the data
+First unzip the data to the working directory. Then read the data to a dataframe using read.csv function.
+```{r loading data, eval=TRUE}
+setwd("/Users/Brandon/datasciencecoursera/")
+unzip("./RepData_PeerAssessment1/activity.zip")
+data <- read.csv("./activity.csv",header=T,sep=",")
+options(scipen = 10, digits = 0)
+```
+
+## What is mean total number of steps taken per day?
+Use tapply to calculate the sum of number of steps taken each day. Then calculate the mean and median. Create a histogram with the Date on the x-axis and the value of daily sum on the y-axis.
+```{r First question}
+dailysum<-tapply(data$steps,data$date,sum,na.rm=T)
+dailymean<-mean(dailysum)
+dailymedian<-median(dailysum)
+dailymeandate<-as.Date(names(dailysum))
+library(ggplot2)
+qplot(dailymeandate,dailysum,geom="histogram",stat="identity")
+```
+
+The mean total number of steps taken per day is `r round(dailymean,0)` and the median is `r round(dailymedian,0)`
+
+## What is the average daily activity pattern?
+Use tapply to calculate the mean of number of steps taken at each interval across all days.
+```{r Second question}
+interval_mean<-tapply(data$steps,data$interval,mean,na.rm=T)
+time_in_a_day<-names(interval_mean)
+maxint<-names(interval_mean[interval_mean==max(interval_mean)])
+plot(time_in_a_day,interval_mean,type="l")
+```
+
+The maximum umber of steps taken by the individual starts at `r maxint` during the day
+
+
+## Imputing missing values
+Fill in the NA values with the mean conditional of the 5-minute interval. For instance, a NA value occurs at 0000 hours will be filled with the mean of all the non-NA values of the other days at 0000 hours
+```{r Third question part 1}
+NoNAs<-length(data$steps[data$steps=="NA"])
+data2<-data
+for (i in 1:length(data2$steps)){
+        if (is.na(data2$steps[i])){
+                data2$steps[i]<-interval_mean[names(interval_mean)==data2$interval[i]]
+        }}
+```
+There are `r NoNAs` NA's in the "steps" data.
+
+```{r Third question part 2}
+dailysum2<-tapply(data2$steps,data2$date,sum)
+dailymean2<-mean(dailysum2)
+dailymedian2<-median(dailysum2)
+dailymeandate2<-as.Date(names(dailysum2))
+qplot(dailymeandate2,dailysum2,geom="histogram",stat="identity")
+
+```
+
+After filling in the missing data, the mean total number of steps taken per day is now `r round(dailymean2,0)` and the median is `r round(dailymedian2,0)`. These are different from the original mean, `r dailymean`, and median, `r dailymedian`.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Convert the date to a weekday variable and then categorize them to either "weekday" or "weekend" in a new variable weekdays2.
+```{r Fourth question part 1}
+data2$weekdays<-weekdays(as.Date(data2$date),abbreviate = TRUE)
+data2$weekdays2<-"weekday"
+data2$weekdays2[data2$weekdays=="Sat"|data2$weekdays=="Sun"]<-"weekend"
+```
+
+Create two subsets of data, one for weekday and one for weekend, and then create the panel chart.
+```{r Fourth question part 2}
+weekday_data2<-subset(data2,data2$weekdays2=="weekday")
+weekend_data2<-subset(data2,data2$weekdays2=="weekend")
+weekday_interval_mean<-tapply(weekday_data2$steps,weekday_data2$interval,mean)
+weekend_interval_mean<-tapply(weekend_data2$steps,weekend_data2$interval,mean)
+
+par(mfrow=c(2,1),mar=c(4,4,2,1))
+plot(time_in_a_day,weekend_interval_mean,type="l")
+plot(time_in_a_day,weekday_interval_mean,type="l")
+```
+
+The sample data shows a lot more activities during weekend compared to that of weekday, especially after 10am in the day.
+
